@@ -21,15 +21,20 @@ options, args = optparser.parse_args()
 client = paramiko.SSHClient()
 client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 client.load_system_host_keys()
-client.connect('review.openstack.org', port=29418,
-               key_filename='/Users/john/.ssh/id_rsa_launchpad',
-               username='notmyname')
-stdin, stdout, stderr = client.exec_command(
-    'gerrit query project:openstack/%s --all-approvals '
-    '--patch-sets --format JSON' % options.project)
 changes = []
-for l in stdout:
-    changes += [json.loads(l)]
+while True:
+    client.connect('review.openstack.org', port=29418,
+                   key_filename='/Users/john/.ssh/id_rsa_launchpad',
+                   username='notmyname')
+    cmd = ('gerrit query project:openstack/%s '
+           '--all-approvals --patch-sets --format JSON' % options.project)
+    if len(changes) > 0:
+        cmd += ' resume_sortkey:%s' % changes[-2]['sortKey']
+    stdin, stdout, stderr = client.exec_command(cmd)
+    for l in stdout:
+        changes += [json.loads(l)]
+    if changes[-1]['rowCount'] == 0:
+        break
 
 reviews = []
 
