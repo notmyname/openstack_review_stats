@@ -55,13 +55,15 @@ def round_to_day(ts):
 
 reviewers = {}
 for review in reviews:
+    if review['type'] != 'CRVW':
+        # Only count code reviews.  Don't add another for Approved, which is
+        # type 'APRV'
+        continue
     reviewer = review['by'].get('username', 'unknown')
-    if options.raw:
-        if reviewer not in reviewers:
-            reviewers[reviewer] = {}
-        day = round_to_day(review['grantedOn'])
-        reviewers[reviewer][day] = reviewers[reviewer].get(day, 0) + 1
-    else:
-        reviewers[reviewer] = reviewers.get(reviewer, 0) + 1
+    reviewers.setdefault(reviewer,
+            {'votes': {'-2': 0, '-1': 0, '1': 0, '2': 0}})
+    reviewers[reviewer]['total'] = reviewers[reviewer].get('total', 0) + 1
+    cur = reviewers[reviewer]['votes'][review['value']]
+    reviewers[reviewer]['votes'][review['value']] = cur + 1
 
 print json.dumps(reviewers, sort_keys=True, indent=4)
